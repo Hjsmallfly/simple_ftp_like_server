@@ -22,14 +22,27 @@ class FTPClientHandler:
     # 文件类型
     TYPE_FILE = 2
 
+    # 支持的命令列表
     COMMAND_LIST = ("ls", "rm", "open", "put", "get", "cd")
 
     # 命令运行成功
     CODE_OKAY = 0
 
+    # 每次读取的字节数
+    RECV_SIZE = 1024
+
     def __init__(self):
-        # 已经接收到的数据
         self.pwd = "."
+
+        # 数据类型
+        self.data_type = -1
+        # 数据大小
+        self.content_size = -1
+        # 记录已经读取了的字节数
+        self.received_size = 0
+        # 记录已经读取了的字节
+        self.received_bytes = b''
+
         pass
 
     @staticmethod
@@ -52,75 +65,77 @@ class FTPClientHandler:
                 client.send(bytes(return_value, encoding="UTF-8"))
         elif type_ == FTPClientHandler.TYPE_FILE:
             pass
-        print("sent reply")
+        print("Reply: sent")
         return
 
-    # def __
+    def reset(self):
+        # 数据类型
+        self.data_type = -1
+        # 数据大小
+        self.content_size = -1
+        # 记录已经读取了的字节数
+        self.received_size = 0
+        # 记录已经读取了的字节
+        self.received_bytes = b''
 
     def recv(self, client, address):
-        # 每次读取的数据大小
-        size = 1024
-        # 数据类型
-        data_type = -1
-        # 数据大小
-        content_size = -1
-
-        received_size = 0
-
-        received_bytes = b''
 
         while True:
-            try:
-                if received_size < FTPClientHandler.TYPE_SIZE:
-                    # 需要读取数据类型
-                    data = client.recv(FTPClientHandler.TYPE_SIZE - received_size)
-                    if data:
-                        received_bytes += data
-                        received_size += len(data)
-                    else:
-                        print("client: {} disconnected".format(address))
-                        client.close()
-                        return
-                elif data_type == -1 and received_size == FTPClientHandler.TYPE_SIZE:
-                    # 记录数据类型
-                    data_type = int.from_bytes(received_bytes[: FTPClientHandler.TYPE_SIZE], byteorder="little")
-                    # print("data type:", data_type)
-                elif received_size < (FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE):
-                    # 读取数据大小
-                    data = client.recv(FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE - received_size)
-                    if data:
-                        received_bytes += data
-                        received_size += len(data)
-                    else:
-                        print("client: {} disconnected".format(address))
-                        client.close()
-                        return
-                elif content_size == -1 and received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE:
-                    content_size = int.from_bytes(received_bytes[1: FTPClientHandler.CONTENT_SIZE], byteorder="little")
-                    # print("content size:", content_size)
-                elif received_size < FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + content_size:
-                    # 还没有接收完数据
-                    data = client.recv(size)
-                    if data:
-                        received_bytes += data
-                        received_size += len(data)
-                    else:
-                        print("client: {} disconnected".format(address))
-                        client.close()
-                        return
-                elif received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + content_size:
-                    print("received all content")
-                    self.handle(client, data_type, received_bytes)
-                    # 清空数据
-                    received_bytes = b''
-                    received_size = 0
-                    data_type = -1
-                    content_size = -1
+            # 还未读到类型字节
+            if self.received_size < FTPClientHandler.TYPE_SIZE:
+                status = self.__recv(client, address, FTPClientHandler.TYPE_SIZE - self.received_size)
+                if not status:
+                    return
+            elif self.data_type == -1 and self.received_size == FTPClientHandler.TYPE_SIZE:
+                # 记录数据类型
+                self.data_type = int.from_bytes(self.received_bytes[: FTPClientHandler.TYPE_SIZE], byteorder="little")
 
-            except Exception as e:
-                print(e)
+            elif self.received_size < (FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE):
+                # 读取数据大小
+                status = self.__recv(client, address, FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE - self.received_size)
+                if not status:
+                    return
+
+            elif self.content_size == -1 and self.received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE:
+                self.content_size = int.from_bytes(self.received_bytes[1: FTPClientHandler.CONTENT_SIZE], byteorder="little")
+
+            elif self.received_size < FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + self.content_size:
+                # 还没有接收完数据
+                status = self.__recv(client, address, FTPClientHandler.RECV_SIZE)
+                if not status:
+                    return
+            elif self.received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + self.content_size:
+                # print("received all content")
+                print("------------------------handling---------------------")
+                self.handle(client, self.data_type, self.received_bytes)
+                print("------------------------handled---------------------")
+                # 清空数据
+                self.reset()
+
+    def __recv(self, client, address, size):
+        """
+        从socket中读取数据
+        读到新数据返回 True
+        连接断开返回 False
+        出现错误返回 None
+        :param client: 与客户端连接的socket
+        :param address: 地址
+        :param size: 读取多少字节
+        :return:
+        """
+        try:
+            data = client.recv(size)
+            if data:
+                self.received_bytes += data
+                self.received_size += len(data)
+                return True
+            else:
+                print("client: {} disconnected".format(address))
                 client.close()
-                return
+                return False
+        except Exception as e:
+            print(repr(e))
+            return None
 
     def send_data(self):
         pass
