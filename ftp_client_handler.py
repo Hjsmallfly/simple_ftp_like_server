@@ -23,7 +23,7 @@ class FTPClientHandler:
     TYPE_FILE = 2
 
     # 支持的命令列表
-    COMMAND_LIST = ("ls", "rm", "open", "put", "get", "cd")
+    # COMMAND_LIST = ("ls", "rm", "open", "put", "get", "cd")
 
     # 命令运行成功
     CODE_OKAY = 0
@@ -31,8 +31,10 @@ class FTPClientHandler:
     # 每次读取的字节数
     RECV_SIZE = 1024
 
-    def __init__(self):
-        self.pwd = "."
+    def __init__(self, command_handler, file_handler):
+
+        self.command_handler = command_handler
+        self.file_handler = file_handler
 
         # 数据类型
         self.data_type = -1
@@ -51,21 +53,27 @@ class FTPClientHandler:
         data_size = bytes(ctypes.c_int32(len(message)))
         return bytes(ctypes.c_int8(status_code)) + data_size + message
 
-    def handle(self, client, type_, data):
+    def handle(self, client, address, type_, data):
+        data = data[FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ].decode("UTF-8")
+
         if type_ == FTPClientHandler.TYPE_COMMAND:
-            data = data.decode("UTF-8")
-            cmd = data.split(" ")[0][FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
-            print("command:", cmd)
-            if not cmd in FTPClientHandler.COMMAND_LIST:
-                reply = FTPClientHandler.make_response(0, "command {} not found!".format(cmd))
-                client.send(reply)
-                return
-            if cmd == 'ls':
-                return_value = os.popen(cmd).read()
-                client.send(bytes(return_value, encoding="UTF-8"))
-        elif type_ == FTPClientHandler.TYPE_FILE:
-            pass
-        print("Reply: sent")
+            self.command_handler.handle(client, address, data)
+
+            # data = data.decode("UTF-8")
+            # cmd = data.split(" ")[0][FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
+            # print("command:", cmd)
+            # if not cmd in FTPClientHandler.COMMAND_LIST:
+            #     reply = FTPClientHandler.make_response(0, "command {} not found!".format(cmd))
+            #     client.send(reply)
+            #     return
+            # if cmd == 'ls':
+            #     return_value = os.popen(cmd).read()
+            #     client.send(bytes(return_value, encoding="UTF-8"))
+        # elif type_ == FTPClientHandler.TYPE_FILE:
+        #     pass
+        # print("Reply: sent")
+        else:
+            self.file_handler.handle(client, address, data)
         return
 
     def reset(self):
@@ -79,6 +87,12 @@ class FTPClientHandler:
         self.received_bytes = b''
 
     def recv(self, client, address):
+        """
+        读取客户端的数据, 并处理读取到的数据
+        :param client:
+        :param address:
+        :return:
+        """
 
         while True:
             # 还未读到类型字节
@@ -107,7 +121,7 @@ class FTPClientHandler:
             elif self.received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + self.content_size:
                 # print("received all content")
                 print("------------------------handling---------------------")
-                self.handle(client, self.data_type, self.received_bytes)
+                self.handle(client, address, self.data_type, self.received_bytes)
                 print("------------------------handled---------------------")
                 # 清空数据
                 self.reset()

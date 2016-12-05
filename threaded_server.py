@@ -51,7 +51,7 @@ class FTPServer:
         print("Server: start listening")
         self.sock.listen(self.backlog)
 
-    def accept_connections(self, client_handler, new_threading=False, daemon=True):
+    def accept_connections(self, client_handler, command_handler, file_handler, new_threading=False, daemon=True):
         """
         开始监听
         :param client_handler: 处理和客户端的通信的类, 需要有recv方法
@@ -63,7 +63,7 @@ class FTPServer:
         if not callable(client_handler):
             raise TypeError("client_handler must be callable")
         while not self.__stop:
-            handler = client_handler()
+            handler = client_handler(command_handler, file_handler)
             # 接收请求
             client, address = self.sock.accept()
             print("new client:", address)
@@ -76,7 +76,9 @@ class FTPServer:
                 client_handler(client, address)
             else:
                 # 在另外一个线程中进行服务
-                threading.Thread(target=handler.recv, args=(client, address)).start()
+                thread = threading.Thread(target=handler.recv, args=(client, address))
+                thread.setDaemon(daemon)
+                thread.start()
 
     def stop(self):
         self.__stop = True
@@ -100,6 +102,11 @@ class FTPServer:
                 return
 
 if __name__ == '__main__':
-    server = FTPServer("", 50000, 5)
+    from command_handler import FTPCommandHandler, ls_callback, open_callback
+    server = FTPServer("0.0.0.0", 50000, 5)
     server.listen()
-    server.accept_connections(FTPClientHandler, True)
+    callback_table = {
+        "ls": ls_callback,
+        "open": open_callback
+    }
+    server.accept_connections(FTPClientHandler, FTPCommandHandler(callback_table), None, True)
