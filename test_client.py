@@ -27,7 +27,7 @@ def send_text(sock, type_, data):
             sock.close()
             return
     reply = sock.recv(1024)
-    print("reply: ", reply.decode("UTF-8"))
+    print("reply:\n", reply.decode("UTF-8")[4:], sep="")
     # print("all data sent")
 
 if __name__ == '__main__':

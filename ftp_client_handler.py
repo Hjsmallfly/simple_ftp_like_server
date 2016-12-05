@@ -24,17 +24,19 @@ class FTPClientHandler:
 
     COMMAND_LIST = ("ls", "rm", "open", "put", "get", "cd")
 
+    # 命令运行成功
+    CODE_OKAY = 0
+
     def __init__(self):
         # 已经接收到的数据
-        # self.received_size = 0
-        # self.received_bytes = b''
+        self.pwd = "."
         pass
 
     @staticmethod
-    def make_response(message):
+    def make_response(status_code, message):
         message = bytes(message, encoding="UTF-8")
         data_size = bytes(ctypes.c_int32(len(message)))
-        return data_size + message
+        return bytes(ctypes.c_int8(status_code)) + data_size + message
 
     def handle(self, client, type_, data):
         if type_ == FTPClientHandler.TYPE_COMMAND:
@@ -42,7 +44,7 @@ class FTPClientHandler:
             cmd = data.split(" ")[0][FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
             print("command:", cmd)
             if not cmd in FTPClientHandler.COMMAND_LIST:
-                reply = FTPClientHandler.make_response("command {} not found!".format(cmd))
+                reply = FTPClientHandler.make_response(0, "command {} not found!".format(cmd))
                 client.send(reply)
                 return
             if cmd == 'ls':
@@ -52,6 +54,8 @@ class FTPClientHandler:
             pass
         print("sent reply")
         return
+
+    # def __
 
     def recv(self, client, address):
         # 每次读取的数据大小
