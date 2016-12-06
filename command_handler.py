@@ -8,6 +8,7 @@ import os
 
 ROOT_DIRNAME = "ftp"
 ROOT_PATH = os.path.dirname( os.path.realpath(__file__) ) + "/" + ROOT_DIRNAME + "/"
+CWD = ROOT_PATH
 
 class FTPCommandHandler:
 
@@ -87,23 +88,23 @@ def restrain_dir(args):
                 opts.append(arg)
             elif arg.startswith("/"):
                 # 用限定过的根目录替换根
-                arg = arg.replace("/", ROOT_PATH, 1)
-                abs_paths.append(arg)
+                arg = arg.replace("/", CWD, 1)
+                abs_paths.append( os.path.realpath( arg ))
             else:
-                rel_paths.append(ROOT_PATH + arg)
+                rel_paths.append(os.path.realpath( CWD + arg ))
 
         args = [ args[0] ] + abs_paths + rel_paths + opts
 
         if len(abs_paths) == 0 and len(rel_paths) == 0:
-            args.insert(1, ROOT_PATH)
+            args.insert(1, CWD)
         print("altered:", args)
-
 
     return args
 
 def ls_callback(args):
-    if len(args) == 0:
-        args = [args[0], ROOT_PATH]
+    print("/ -->", CWD)
+    if len(args) == 1:
+        args = [args[0], CWD]
     else:
         args = restrain_dir(args)
 
@@ -117,3 +118,45 @@ def open_callback(args):
     args = restrain_dir(args)
     args[0] = "cat"
     return system_call(args)
+
+def cd_callback(args):
+    global CWD
+    if len(args) > 2:
+        return 1, b'', b"invalid command: cd require only one argument"
+
+    args = restrain_dir(args)
+    # 目标路径
+    dest = args[1]
+    if not dest.endswith("/"):
+        dest = dest + "/"
+
+    if not dest.startswith(ROOT_PATH):
+        # print()
+        # 防止用户不停 cd ../
+        dest = ROOT_PATH
+
+    print("dest:", dest)
+
+    if os.path.isdir(dest):
+        CWD = dest
+        return 0, b'INTO ' + dest.encode("UTF-8"), b''
+    else:
+        return 2, b'', b"invalid path"
+
+def rm_callback(args):
+    global CWD
+    if len(args) == 1:
+        return 1, b'', b"require one single argument."
+    if len(args) > 2:
+        return 2, b'', b"require one single argument."
+    args = restrain_dir(args)
+    # 需要删除的文件
+    file_to_remove = args[1]
+    if os.path.isfile(file_to_remove):
+        print("removing", file_to_remove)
+        os.unlink(file_to_remove)
+        return 0, b'deleted', b""
+    else:
+        print("file not found")
+        return 3, b"", b"File not found or it is a dir."
+

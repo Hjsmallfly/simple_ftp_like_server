@@ -5,7 +5,6 @@ __author__ = 'smallfly'
 处理和 ftp client 的数据交互
 """
 
-import os
 import ctypes
 
 class FTPClientHandler:
@@ -21,9 +20,6 @@ class FTPClientHandler:
 
     # 文件类型
     TYPE_FILE = 2
-
-    # 支持的命令列表
-    # COMMAND_LIST = ("ls", "rm", "open", "put", "get", "cd")
 
     # 命令运行成功
     CODE_OKAY = 0
@@ -58,20 +54,6 @@ class FTPClientHandler:
 
         if type_ == FTPClientHandler.TYPE_COMMAND:
             self.command_handler.handle(client, address, data)
-
-            # data = data.decode("UTF-8")
-            # cmd = data.split(" ")[0][FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
-            # print("command:", cmd)
-            # if not cmd in FTPClientHandler.COMMAND_LIST:
-            #     reply = FTPClientHandler.make_response(0, "command {} not found!".format(cmd))
-            #     client.send(reply)
-            #     return
-            # if cmd == 'ls':
-            #     return_value = os.popen(cmd).read()
-            #     client.send(bytes(return_value, encoding="UTF-8"))
-        # elif type_ == FTPClientHandler.TYPE_FILE:
-        #     pass
-        # print("Reply: sent")
         else:
             self.file_handler.handle(client, address, data)
         return
