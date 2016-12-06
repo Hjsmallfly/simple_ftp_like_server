@@ -160,3 +160,17 @@ def rm_callback(args):
         print("file not found")
         return 3, b"", b"File not found or it is a dir."
 
+def get_callback(args):
+    """
+    传输文件给客户端
+    :param args:
+    :return:
+    """
+    if len(args) == 1:
+        return 1, b'', b"require one single argument."
+    args = restrain_dir(args)
+    file = args[1]
+    if os.path.isfile(file):
+        with open(file, mode="rb") as f:
+            return 0, f.read(-1), b''
+    return 2, b'', b"file not exist or it is a dir"

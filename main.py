@@ -1,7 +1,7 @@
 # coding=utf-8
 __author__ = 'smallfly'
 
-from command_handler import FTPCommandHandler, ls_callback, open_callback, cd_callback, rm_callback
+from command_handler import FTPCommandHandler, ls_callback, open_callback, cd_callback, rm_callback, get_callback
 from threaded_server import FTPServer
 from ftp_client_handler import FTPClientHandler
 
@@ -12,6 +12,7 @@ if __name__ == '__main__':
         "ls": ls_callback,
         "open": open_callback,
         "cd": cd_callback,
-        "rm": rm_callback
+        "rm": rm_callback,
+        "get": get_callback
     }
     server.accept_connections(FTPClientHandler, FTPCommandHandler(callback_table), None, True)
