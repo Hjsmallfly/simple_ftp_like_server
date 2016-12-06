@@ -102,7 +102,7 @@ class FTPServer:
                 return
 
 if __name__ == '__main__':
-    from command_handler import FTPCommandHandler, ls_callback, open_callback
+    from handlers import FTPCommandHandler, ls_callback, open_callback
     server = FTPServer("0.0.0.0", 50000, 5)
     server.listen()
     callback_table = {

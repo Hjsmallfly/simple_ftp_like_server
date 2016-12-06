@@ -28,12 +28,16 @@ def send_text(sock, type_, data):
             return
     reply = sock.recv(1024)
     print("reply:\n", reply[5: ].decode("UTF-8"), sep="")
-    # print("all data sent")
+
+def test_send_file(sock):
+    send_text(sock, 1, "put readme")
+    send_text(sock, 2, "Finally it works.")
 
 if __name__ == '__main__':
     sock = socket.socket()
     sock.connect(("", 50000))
     while True:
-        cmd = input("command:")
+        cmd = input("command: ")
         send_text(sock, 1, cmd)
+    # test_send_file(sock)
     sock.close()

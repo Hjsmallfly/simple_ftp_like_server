@@ -41,7 +41,8 @@ class FTPClientHandler:
         # 记录已经读取了的字节
         self.received_bytes = b''
 
-        pass
+        # 记录文件名
+        self.filename = ""
 
     @staticmethod
     def make_response(status_code, message):
@@ -50,12 +51,18 @@ class FTPClientHandler:
         return bytes(ctypes.c_int8(status_code)) + data_size + message
 
     def handle(self, client, address, type_, data):
-        data = data[FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ].decode("UTF-8")
+        data = data[FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
 
         if type_ == FTPClientHandler.TYPE_COMMAND:
-            self.command_handler.handle(client, address, data)
+            # 返回解析过后的命令
+            args = self.command_handler.handle(client, address, data.decode("UTF-8"))
+            # 如果是上传任务的话
+            if len(args) == 2 and args[0] == "put":
+                self.filename = args[1]
+                print("The file to be uploaded:", self.filename)
         else:
-            self.file_handler.handle(client, address, data)
+            print("The file to be uploaded:", self.filename)
+            self.file_handler.handle(client, address, self.filename, data)
         return
 
     def reset(self):

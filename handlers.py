@@ -10,6 +10,7 @@ ROOT_DIRNAME = "ftp"
 ROOT_PATH = os.path.dirname( os.path.realpath(__file__) ) + "/" + ROOT_DIRNAME + "/"
 CWD = ROOT_PATH
 
+
 class FTPCommandHandler:
 
     def __init__(self, callback_table):
@@ -27,7 +28,7 @@ class FTPCommandHandler:
         if len(args) == 0:
             reply = FTPCommandHandler.make_response(1, "invalid command")
             self.send_data(client, address, reply)
-            return
+            return restrain_dir(args)
 
         # 命令名
         cmd = args[0]
@@ -41,10 +42,12 @@ class FTPCommandHandler:
             else:
                 reply = FTPCommandHandler.make_response(code, stdout)
 
-        self.send_data(client, address, reply)
+        FTPCommandHandler.send_data(client, address, reply)
 
+        return restrain_dir(args)
 
-    def send_data(self, client, address, data):
+    @staticmethod
+    def send_data(client, address, data):
         size_sent = 0
         size_to_send = len(data)
         while size_sent < size_to_send:
@@ -67,6 +70,22 @@ class FTPCommandHandler:
             message = bytes(message, encoding="UTF-8")
         data_size = bytes(ctypes.c_int32(len(message)))
         return bytes(ctypes.c_int8(status_code)) + data_size + message
+
+class FileHandler:
+
+    def __init__(self):
+        pass
+
+    def handle(self, client, address, filename, content):
+        if filename.endswith("/"):
+            reply = FTPCommandHandler.make_response(1, "Invalid filename")
+        elif filename.strip() == "":
+            reply = FTPCommandHandler.make_response(1, "Invalid filename")
+        else:
+            with open(filename, "wb") as f:
+                f.write(content)
+            reply = FTPCommandHandler.make_response(0, "uploaded")
+        FTPCommandHandler.send_data(client, address, reply)
 
 def system_call(args):
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -174,3 +193,12 @@ def get_callback(args):
         with open(file, mode="rb") as f:
             return 0, f.read(-1), b''
     return 2, b'', b"file not exist or it is a dir"
+
+def put_callback(args):
+    if len(args) == 1:
+        return 1, b'', b"require one single argument."
+    if len(args) > 2:
+        return 2, b'', b"require one single argument."
+
+    # args = restrain_dir(args)
+    return 0, b'ready to receive the file.', b''
