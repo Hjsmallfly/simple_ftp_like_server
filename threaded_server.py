@@ -1,24 +1,14 @@
 # coding=utf-8
 __author__ = 'smallfly'
 
-"""
-多线程的简单FTP SERVER
-功能:
-    解析命令:
-        1. ls 返回当前目录内容
-        2. rm <文件名> 删除文件
-        3. open <文件名> 打开并读取文件内容
-        4. put <文件名> 接收文件到当前目录
-        5. get <文件名> 传送文件到客户端
-        6. cd <目录> 进入目录
-"""
-
-from ftp_client_handler import FTPClientHandler
-
 import socket
 import threading
 
 class FTPServer:
+
+    """
+    多线程的FTP服务端
+    """
 
     def __init__(self, host, port, backlog):
         """
@@ -54,7 +44,9 @@ class FTPServer:
     def accept_connections(self, client_handler, command_handler, file_handler, new_threading=False, daemon=True):
         """
         开始监听
-        :param client_handler: 处理和客户端的通信的类, 需要有recv方法
+        :param client_handler: 处理和客户端的通信的类, 需要有recv方法, 初始化方法接受 command_handler 和 file_handler 为参数
+        :param command_handler: 处理命令的handler
+        :param file_handler: 处理文件的handler, 用于保存接受到的文件
         :param new_threading: 是否在新进程中运行
         :param daemon: 是否是后台线程
         :return:
@@ -63,7 +55,7 @@ class FTPServer:
         if not callable(client_handler):
             raise TypeError("client_handler must be callable")
         while not self.__stop:
-            handler = client_handler(command_handler, file_handler)
+            client_handler_obj = client_handler(command_handler, file_handler)
             # 接收请求
             client, address = self.sock.accept()
             print("new client:", address)
@@ -76,7 +68,7 @@ class FTPServer:
                 client_handler(client, address)
             else:
                 # 在另外一个线程中进行服务
-                thread = threading.Thread(target=handler.recv, args=(client, address))
+                thread = threading.Thread(target=client_handler_obj.recv, args=(client, address))
                 thread.setDaemon(daemon)
                 thread.start()
 
@@ -85,28 +77,3 @@ class FTPServer:
         for client in self.clients:
             client.close()
 
-    def _test_handler(self, client, address):
-        # 读取的字节数
-        size = 1024
-        while True:
-            try:
-                data = client.recv(size)
-                if data:
-                    print("client {}:".format(address), data.decode("UTF-8"))
-                else:
-                    print("client {}: disconnected".format(address))
-                    return
-            except Exception as e:
-                print(e)
-                client.close()
-                return
-
-if __name__ == '__main__':
-    from handlers import FTPCommandHandler, ls_callback, open_callback
-    server = FTPServer("0.0.0.0", 50000, 5)
-    server.listen()
-    callback_table = {
-        "ls": ls_callback,
-        "open": open_callback
-    }
-    server.accept_connections(FTPClientHandler, FTPCommandHandler(callback_table), None, True)

@@ -3,9 +3,17 @@ __author__ = 'smallfly'
 
 """
 处理和 ftp client 的数据交互
+功能:
+    解析命令:
+        1. ls 返回当前目录内容
+        2. rm <文件名> 删除文件
+        3. open <文件名> 打开并读取文件内容
+        4. put <文件名> 接收文件到当前目录
+        5. get <文件名> 传送文件到客户端
+        6. cd <目录> 进入目录
 """
 
-import ctypes
+from response_helper import make_response, send_data
 
 class FTPClientHandler:
 
@@ -44,13 +52,8 @@ class FTPClientHandler:
         # 记录文件名
         self.filename = ""
 
-    @staticmethod
-    def make_response(status_code, message):
-        message = bytes(message, encoding="UTF-8")
-        data_size = bytes(ctypes.c_int32(len(message)))
-        return bytes(ctypes.c_int8(status_code)) + data_size + message
-
     def handle(self, client, address, type_, data):
+
         data = data[FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE: ]
 
         if type_ == FTPClientHandler.TYPE_COMMAND:
@@ -60,9 +63,12 @@ class FTPClientHandler:
             if len(args) == 2 and args[0] == "put":
                 self.filename = args[1]
                 print("The file to be uploaded:", self.filename)
-        else:
+        elif type_ == FTPClientHandler.TYPE_FILE:
             print("The file to be uploaded:", self.filename)
             self.file_handler.handle(client, address, self.filename, data)
+        else:
+            print("unknown type:", type_)
+            send_data(client, address, make_response(1, "unknown type:" + str(type_)))
         return
 
     def reset(self):
@@ -139,6 +145,3 @@ class FTPClientHandler:
         except Exception as e:
             print(repr(e))
             return None
-
-    def send_data(self):
-        pass
