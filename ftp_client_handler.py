@@ -106,7 +106,7 @@ class FTPClientHandler:
                     return
 
             elif self.content_size == -1 and self.received_size == FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE:
-                self.content_size = int.from_bytes(self.received_bytes[1: FTPClientHandler.CONTENT_SIZE], byteorder="little")
+                self.content_size = int.from_bytes(self.received_bytes[FTPClientHandler.TYPE_SIZE: FTPClientHandler.CONTENT_SIZE], byteorder="little")
 
             elif self.received_size < FTPClientHandler.TYPE_SIZE + FTPClientHandler.CONTENT_SIZE + self.content_size:
                 # 还没有接收完数据

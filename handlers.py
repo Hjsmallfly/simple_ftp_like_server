@@ -128,7 +128,9 @@ def open_callback(args):
 def cd_callback(args):
     global CWD
     if len(args) > 2:
-        return 1, b'', b"invalid command: cd require only one argument"
+        return 1, b'', b"invalid command: cd requires only one argument"
+    if len(args) == 1:
+        return 3, b'', b"invalid command: cd requires one argument"
 
     args = restrain_dir(args)
     # 目标路径
